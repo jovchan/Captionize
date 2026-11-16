@@ -7,13 +7,19 @@ const https = require('https');
 const { exec, spawn } = require('child_process');
 const crypto = require('crypto');
 
+const os = require('os');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-const UPLOAD_DIR = path.join(__dirname, 'uploads');
+const UPLOAD_DIR = process.env.VERCEL ? path.join(os.tmpdir(), 'captionize_uploads') : path.join(__dirname, 'uploads');
 const PYTHON_PATH = 'python';
 
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+try {
+  if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+} catch (e) {
+  // Ignore in read-only serverless environments
+}
 
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -601,15 +607,19 @@ app.post('/api/transcribe', upload.single('file'), async (req, res) => {
   }
 });
 
-// ── Boot ────────────────────────────────────────────────────
+// ── Export & Boot ───────────────────────────────────────────
 
-app.listen(PORT, '0.0.0.0', async () => {
-  console.log(`\n=================================================`);
-  console.log(`  Captionize Studio: http://0.0.0.0:${PORT}`);
-  console.log(`=================================================`);
-  const ffmpegOk = await hasFFmpeg();
-  console.log(`  Engine       : Google Gemini (${GEMINI_MODELS[0]})`);
-  console.log(`  API Key      : ${GOOGLE_API_KEY ? 'Configured & Active' : 'Missing'}`);
-  console.log(`  FFmpeg Status: ${ffmpegOk ? 'Detected & Ready' : 'Not Found'}`);
-  console.log(`  Fallback     : Local Whisper AI\n`);
-});
+module.exports = app;
+
+if (require.main === module) {
+  app.listen(PORT, '0.0.0.0', async () => {
+    console.log(`\n=================================================`);
+    console.log(`  Captionize Studio: http://0.0.0.0:${PORT}`);
+    console.log(`=================================================`);
+    const ffmpegOk = await hasFFmpeg();
+    console.log(`  Engine       : Google Gemini (${GEMINI_MODELS[0]})`);
+    console.log(`  API Key      : ${GOOGLE_API_KEY ? 'Configured & Active' : 'Missing'}`);
+    console.log(`  FFmpeg Status: ${ffmpegOk ? 'Detected & Ready' : 'Not Found'}`);
+    console.log(`  Fallback     : Local Whisper AI\n`);
+  });
+}

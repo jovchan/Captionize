@@ -216,7 +216,8 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { audioBase64, mimeType = 'audio/wav', language = 'auto', mode = 'transcribe', duration = 0 } = req.body || {};
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+    const { audioBase64, mimeType = 'audio/wav', language = 'auto', mode = 'transcribe', duration = 0 } = body;
 
     if (!audioBase64) {
       return res.status(400).json({ error: 'Tidak ada data audio yang diterima.' });
