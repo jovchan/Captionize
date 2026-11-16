@@ -1,0 +1,16 @@
+{
+  "name": "captionize",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Convert audio and video to timestamped text and SRT subtitles",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "multer": "^1.4.5-lts.1"
+  }
+}

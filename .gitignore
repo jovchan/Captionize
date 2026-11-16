@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# User uploads & temp audio/video files
+uploads/
+*.mp4
+*.mp3
+*.wav
+
+# Environment variables & secrets (NEVER commit this to GitHub!)
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Agent internals
+.agents/

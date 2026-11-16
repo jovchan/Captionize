@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Captionize — Subtitle &amp; Video Studio</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23111827'/><text x='50' y='68' font-size='56' font-weight='800' font-family='system-ui' fill='white' text-anchor='middle'>V</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Cinzel:wght@700;800&family=Cormorant+Garamond:wght@600;700&family=Courier+Prime:wght@700&family=Dancing+Script:wght@700&family=Inter:wght@400;500;600;700;800&family=Merriweather:wght@700;900&family=Montserrat:wght@700;800;900&family=Playfair+Display:ital,wght@0,700;1,700&family=Poppins:wght@600;700;800&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="studio-app">
+
+  <!-- ── TOP NAVIGATION BAR ───────────────────────────────────── -->
+  <header class="studio-topbar">
+    <div class="topbar-left">
+      <!-- Wordmark / Logo -->
+      <a href="/" class="topbar-logo" title="Captionize Studio">
+        <span class="logo-badge">C</span>
+      </a>
+    </div>
+
+    <!-- Center: Project Title & Undo / Redo -->
+    <div class="topbar-center">
+      <div class="project-title-wrap">
+        <input type="text" id="project-title-input" class="project-title-input" value="1101(1)-1" aria-label="Project Title" spellcheck="false">
+        <span class="project-saved-icon" title="Changes auto-saved">☁</span>
+      </div>
+
+      <div class="topbar-history">
+        <button type="button" class="btn-icon disabled" id="btn-undo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+        </button>
+        <button type="button" class="btn-icon disabled" id="btn-redo" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Controls -->
+    <div class="topbar-right">
+      <!-- Caption Case Mode Toggle: aa vs AA -->
+      <div class="case-switcher" title="Toggle letter case for all captions">
+        <button type="button" class="case-btn active" id="btn-case-lower" title="Huruf kecil semua (lowercase)">aa</button>
+        <button type="button" class="case-btn" id="btn-case-upper" title="HURUF BESAR SEMUA (UPPERCASE)">AA</button>
+      </div>
+
+      <!-- Quick Upload / Replace Media Button (Opens Upload Popup) -->
+      <button type="button" class="btn-topbar-secondary" id="btn-replace-media" title="Upload or change video/audio">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span>Upload</span>
+      </button>
+
+      <!-- Done / Export Dropdown Button -->
+      <div class="export-dropdown-wrap">
+        <button type="button" class="btn-done" id="btn-done-trigger">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>Done</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="export-menu hidden" id="export-menu">
+          <button type="button" class="export-menu-item" id="btn-export-srt">
+            <strong>Export SRT</strong>
+            <span>Standard subtitle track for Premiere, YouTube, TikTok</span>
+          </button>
+          <button type="button" class="export-menu-item" id="btn-export-vtt">
+            <strong>Export VTT</strong>
+            <span>WebVTT format for web players &amp; HTML5</span>
+          </button>
+          <button type="button" class="export-menu-item" id="btn-export-txt">
+            <strong>Export TXT</strong>
+            <span>Full transcript with timestamp marks</span>
+          </button>
+          <hr class="export-menu-divider">
+          <button type="button" class="export-menu-item" id="btn-copy-all">
+            <strong>Copy to Clipboard</strong>
+            <span>Copy all subtitle lines in one click</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── MAIN STUDIO BODY (Flex layout filling 100vh) ───────────── -->
+  <div class="studio-body">
+
+    <!-- 1. LEFT ICON RAIL (Subtitles, Text, Settings) -->
+    <aside class="studio-rail">
+      <div class="rail-items-top">
+        <!-- Subtitles Rail Tab -->
+        <button type="button" class="rail-item active" id="btn-rail-subtitles" title="Subtitles">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="7" y1="9" x2="13" y2="9"/><line x1="7" y1="13" x2="17" y2="13"/></svg>
+          <span class="rail-label">Subtitles</span>
+        </button>
+        <!-- Text Rail Tab (Font Styles Gallery) -->
+        <button type="button" class="rail-item" id="btn-rail-text" title="Text Fonts">
+          <span class="rail-icon-text">T</span>
+          <span class="rail-label">Text</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- 2. SUBTITLES DRAWER (Left column, list of subtitle lines or style settings) -->
+    <section class="studio-drawer" id="subtitles-drawer">
+
+      <!-- Drawer Header -->
+      <div class="drawer-header">
+        <div class="drawer-header-row">
+          <h2 class="drawer-title" id="drawer-main-title">Subtitles</h2>
+          <!-- Style / Edit Segmented Switch -->
+          <div class="drawer-tab-switch">
+            <button type="button" class="drawer-tab-btn" id="tab-style">Style</button>
+            <button type="button" class="drawer-tab-btn active" id="tab-edit">Edit</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- EDIT VIEW (Default) -->
+      <div class="drawer-view-container" id="subtitles-edit-view">
+
+        <!-- Top sub-bar: Language Picker + Options Toggle -->
+        <div class="drawer-meta-subbar">
+          <div class="lang-badge-wrap">
+            <span class="lang-flag-icon">🌐</span>
+            <select id="target-language" class="lang-select-pill" title="Choose primary language or auto-detection">
+              <option value="auto" selected>Auto Detect (ID/EN/ZH)</option>
+              <option value="id">Indonesian</option>
+              <option value="en">English</option>
+              <option value="zh">Mandarin</option>
+              <option value="ja">Japanese</option>
+            </select>
+          </div>
+
+          <button type="button" class="btn-drawer-opt" id="btn-toggle-options" title="Configure model and speaker options">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+          </button>
+        </div>
+
+        <!-- Collapsible Configuration Strip -->
+        <div class="drawer-options-strip hidden" id="drawer-options-strip">
+          <div class="option-field">
+            <label for="transcription-mode">Mode</label>
+            <select id="transcription-mode">
+              <option value="transcribe" selected>Transcribe Speech</option>
+              <option value="translate">Translate to English</option>
+            </select>
+          </div>
+          <div class="option-field">
+            <label for="speaker-format">Speaker Format</label>
+            <select id="speaker-format">
+              <option value="clean" selected>Clean (No Prefix)</option>
+              <option value="bracket">[Speaker 1] Text</option>
+              <option value="dash">- Dialogue Dash</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Quick AI Transcribe Button in Drawer -->
+        <div class="drawer-generate-bar">
+          <button type="button" class="btn-generate-subtitles" id="btn-start-transcribe">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/></svg>
+            <span id="btn-generate-label">Generate Subtitle</span>
+          </button>
+        </div>
+
+        <!-- Processing Progress Inside Drawer -->
+        <div class="drawer-progress hidden" id="drawer-progress">
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="progress-bar-fill"></div>
+          </div>
+          <p class="progress-status" id="processing-message">Generating Subtitle... 0%</p>
+        </div>
+
+        <!-- Scrollable Subtitles List -->
+        <div class="drawer-subtitles-list" id="subtitles-list-container">
+          <!-- Placeholder / Empty state -->
+          <div class="subtitles-empty" id="subtitles-empty-state">
+            <p class="empty-title">No subtitles generated</p>
+            <p class="empty-hint">Upload a video or audio file and click Generate Subtitles to produce timed tracks (max 4 words per segment, period-free).</p>
+          </div>
+        </div>
+
+        <!-- Drawer Footer -->
+        <div class="drawer-footer">
+          <button type="button" class="btn-add-subtitle-line" id="btn-add-segment">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>Add New Subtitles Line</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- STYLE VIEW (Subtitle & Speaker Configuration Panel) -->
+      <div class="drawer-style-view hidden" id="subtitles-style-view">
+
+        <div class="style-section">
+          <h3 class="style-section-title">Speaker Identity</h3>
+          <p class="style-section-hint">Choose how speakers are labeled in subtitles and exports:</p>
+
+          <div class="style-option-group" id="speaker-format-group">
+            <label class="style-radio-label active" data-format="clean">
+              <input type="radio" name="speaker-style" value="clean" checked>
+              <div class="style-radio-content">
+                <strong>Clean Subtitle (No Speaker)</strong>
+                <span>Pure text without speaker prefix or tags</span>
+              </div>
+            </label>
+            <label class="style-radio-label" data-format="bracket">
+              <input type="radio" name="speaker-style" value="bracket">
+              <div class="style-radio-content">
+                <strong>[Speaker 1] Text</strong>
+                <span>Explicit speaker tag prefix in brackets</span>
+              </div>
+            </label>
+            <label class="style-radio-label" data-format="dash">
+              <input type="radio" name="speaker-style" value="dash">
+              <div class="style-radio-content">
+                <strong>- Dialogue Dash</strong>
+                <span>Script dialogue notation with dash prefix</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="style-section">
+          <h3 class="style-section-title">Speaker Color Tags</h3>
+          <label class="style-toggle-row">
+            <span>Colorize speaker names in live overlay</span>
+            <input type="checkbox" id="toggle-speaker-color" checked class="style-checkbox">
+          </label>
+        </div>
+
+        <div class="style-section">
+          <h3 class="style-section-title">Screen Position</h3>
+          <div class="style-btn-grid" id="position-btn-grid">
+            <button type="button" class="style-grid-btn" data-position="top">Top</button>
+            <button type="button" class="style-grid-btn" data-position="middle">Middle</button>
+            <button type="button" class="style-grid-btn active" data-position="bottom">Bottom</button>
+          </div>
+        </div>
+
+        <div class="style-section">
+          <h3 class="style-section-title">Visual Preset</h3>
+          <div class="style-preset-list" id="preset-list">
+            <button type="button" class="style-preset-card active" data-preset="reels">
+              <div class="preset-preview-reels">sample subtitle</div>
+              <span>TikTok / Reels Box</span>
+            </button>
+            <button type="button" class="style-preset-card" data-preset="cinema">
+              <div class="preset-preview-cinema">sample subtitle</div>
+              <span>Cinema Movie Outline</span>
+            </button>
+            <button type="button" class="style-preset-card" data-preset="pill">
+              <div class="preset-preview-pill">sample subtitle</div>
+              <span>Modern Minimal Pill</span>
+            </button>
+            <button type="button" class="style-preset-card" data-preset="yellow">
+              <div class="preset-preview-yellow">sample subtitle</div>
+              <span>Karaoke Yellow</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="style-section">
+          <h3 class="style-section-title">Font Size</h3>
+          <div class="style-btn-grid" id="fontsize-btn-grid">
+            <button type="button" class="style-grid-btn" data-size="small">14px</button>
+            <button type="button" class="style-grid-btn active" data-size="medium">18px</button>
+            <button type="button" class="style-grid-btn" data-size="large">22px</button>
+            <button type="button" class="style-grid-btn" data-size="xlarge">26px</button>
+          </div>
+        </div>
+
+        <div class="style-section">
+          <div class="style-section-header-row">
+            <h3 class="style-section-title">Box Background Opacity</h3>
+            <label class="switch-toggle" title="Toggle subtitle box background on or off">
+              <input type="checkbox" id="toggle-box-bg" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+          <div class="style-slider-row" id="box-bg-slider-row">
+            <input type="range" id="bg-opacity-slider" min="0" max="100" value="75" class="style-range" aria-label="Box Background Opacity">
+            <span id="opacity-label">75%</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 3. TEXT VIEW: 12 Popular Caption Font Styles Gallery (Matching Screenshot 3) -->
+      <div class="drawer-text-view hidden" id="text-style-view">
+        <div class="text-drawer-header">
+          <h2 class="drawer-title">Text</h2>
+        </div>
+
+        <!-- Filter Pills: All, Simple, Title, Lower Third, Other -->
+        <div class="text-cat-pills" id="text-cat-pills">
+          <button type="button" class="text-cat-pill active" data-cat="all">All</button>
+          <button type="button" class="text-cat-pill" data-cat="simple">Simple</button>
+          <button type="button" class="text-cat-pill" data-cat="title">Title</button>
+          <button type="button" class="text-cat-pill" data-cat="lowerthird">Lower Third</button>
+          <button type="button" class="text-cat-pill" data-cat="other">Other</button>
+        </div>
+
+        <div class="text-font-scroll">
+          <!-- Group 1: Simple -->
+          <div class="font-group-block" data-section="simple">
+            <div class="font-group-header">
+              <span class="font-group-title">Simple</span>
+              <button type="button" class="font-view-all-btn">View All &gt;</button>
+            </div>
+            <div class="font-group-grid">
+              <!-- 1. Title (Inter Bold) -->
+              <button type="button" class="font-card active" data-font="Inter" data-cat="simple" data-weight="800" data-transform="none">
+                <span class="font-preview font-inter-bold">Title</span>
+              </button>
+              <!-- 2. Simple (Montserrat Pill) -->
+              <button type="button" class="font-card" data-font="Montserrat" data-cat="simple" data-weight="700" data-transform="none">
+                <span class="font-preview font-montserrat-badge">Simple</span>
+              </button>
+              <!-- 3. Cursive (Dancing Script) -->
+              <button type="button" class="font-card" data-font="Dancing Script" data-cat="simple" data-weight="700" data-transform="none">
+                <span class="font-preview font-dancing-script">Cursive</span>
+              </button>
+              <!-- 4. Serif (Playfair Display) -->
+              <button type="button" class="font-card" data-font="Playfair Display" data-cat="simple" data-weight="700" data-transform="none">
+                <span class="font-preview font-playfair">Serif</span>
+              </button>
+              <!-- 5. Typewriter (Space Mono) -->
+              <button type="button" class="font-card" data-font="Space Mono" data-cat="simple" data-weight="700" data-transform="none">
+                <span class="font-preview font-space-mono">Typewriter</span>
+              </button>
+              <!-- 6. bold (Anton) -->
+              <button type="button" class="font-card" data-font="Anton" data-cat="simple" data-weight="800" data-transform="lowercase">
+                <span class="font-preview font-anton">bold</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Group 2: Title -->
+          <div class="font-group-block" data-section="title">
+            <div class="font-group-header">
+              <span class="font-group-title">Title</span>
+              <button type="button" class="font-view-all-btn">View All &gt;</button>
+            </div>
+            <div class="font-group-grid">
+              <!-- 7. bold Traditional (Cinzel) -->
+              <button type="button" class="font-card" data-font="Cinzel" data-cat="title" data-weight="800" data-transform="uppercase">
+                <div class="font-stacked-preview">
+                  <span class="font-stack-head font-cinzel">BOLD</span>
+                  <span class="font-stack-sub">Traditional</span>
+                </div>
+              </button>
+              <!-- 8. Editorial Classic (Merriweather) -->
+              <button type="button" class="font-card" data-font="Merriweather" data-cat="title" data-weight="700" data-transform="none">
+                <div class="font-stacked-preview">
+                  <span class="font-stack-head font-merriweather">Editorial</span>
+                  <span class="font-stack-sub">Classic</span>
+                </div>
+              </button>
+              <!-- 9. Modern Bauhaus (Poppins) -->
+              <button type="button" class="font-card" data-font="Poppins" data-cat="title" data-weight="700" data-transform="none">
+                <div class="font-stacked-preview">
+                  <span class="font-stack-head font-poppins">Modern</span>
+                  <span class="font-stack-sub">Bauhaus</span>
+                </div>
+              </button>
+              <!-- 10. Elegant Light (Cormorant Garamond) -->
+              <button type="button" class="font-card" data-font="Cormorant Garamond" data-cat="title" data-weight="600" data-transform="none">
+                <div class="font-stacked-preview">
+                  <span class="font-stack-head font-cormorant">Elegant</span>
+                  <span class="font-stack-sub">Light</span>
+                </div>
+              </button>
+              <!-- 11. Signature Industrial (Bebas Neue) -->
+              <button type="button" class="font-card" data-font="Bebas Neue" data-cat="title" data-weight="800" data-transform="uppercase">
+                <div class="font-stacked-preview">
+                  <span class="font-stack-sub">Signature</span>
+                  <span class="font-stack-head font-bebas">INDUSTRIAL</span>
+                </div>
+              </button>
+              <!-- 12. Reliable Typewriter (Courier Prime) -->
+              <button type="button" class="font-card" data-font="Courier Prime" data-cat="title" data-weight="700" data-transform="uppercase">
+                <div class="font-stacked-preview">
+                  <span class="font-stack-head font-courier">RELIABLE</span>
+                  <span class="font-stack-sub">Typewriter</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- 3. CENTER STAGE / CANVAS AREA (Video preview + floating toolbar) -->
+    <main class="studio-stage" id="studio-stage">
+
+      <!-- Hidden Real File Input -->
+      <input type="file" id="file-input" accept=".mp3,.mp4,.wav,.flac,.m4a,.webm,.ogg,.mkv,.mov,.aac" hidden>
+
+      <!-- Video / Media Canvas Wrapper (Default 16:9 Landscape) -->
+      <div class="stage-canvas-frame aspect-16-9" id="canvas-frame">
+
+        <!-- Center Drop Zone (Shown when no media loaded) -->
+        <div class="stage-drop-zone" id="drop-zone" tabindex="0" role="button" aria-label="Drop audio or video here">
+          <div class="drop-icon-circle">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <h3 class="stage-drop-title">Drop your video or audio here</h3>
+          <p class="stage-drop-hint">MP4, MP3, WAV, WebM, M4A up to 1 GB</p>
+          <button type="button" class="btn-browse-file" id="btn-browse-file">Browse File</button>
+        </div>
+
+        <!-- Video Element -->
+        <video id="video-element" class="stage-video hidden" preload="metadata" playsinline></video>
+
+        <!-- Audio Element (When audio-only is uploaded) -->
+        <audio id="audio-element" class="stage-audio hidden" preload="metadata"></audio>
+
+        <!-- Live Synchronized On-Screen Subtitle Overlay -->
+        <div class="stage-subtitle-overlay hidden" id="video-caption-overlay"></div>
+
+      </div>
+
+      <!-- Floating Pill Toolbar Beneath Video -->
+      <div class="floating-stage-toolbar">
+        <div class="aspect-picker-wrap">
+          <button type="button" class="floating-tool-btn" id="btn-aspect-toggle" title="Change video canvas aspect ratio">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
+            <span id="aspect-label">Wide Landscape (16:9)</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="aspect-dropdown-menu hidden" id="aspect-dropdown-menu">
+            <button type="button" class="aspect-opt-btn active" data-ratio="16-9">🖥 16:9 (Landscape / YouTube)</button>
+            <button type="button" class="aspect-opt-btn" data-ratio="9-16">📱 9:16 (TikTok, Reels, Shorts)</button>
+            <button type="button" class="aspect-opt-btn" data-ratio="1-1">◻ 1:1 (Square Feed)</button>
+            <button type="button" class="aspect-opt-btn" data-ratio="auto">↔ Original Video Ratio</button>
+          </div>
+        </div>
+
+        <!-- Volume Adjuster Control -->
+        <div class="toolbar-dropdown-wrap" id="volume-picker-wrap">
+          <button type="button" class="floating-tool-btn" id="btn-volume-toggle" title="Adjust media volume">
+            <svg id="vol-icon-high" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            <svg id="vol-icon-muted" class="hidden" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+            <span id="volume-level-label">100%</span>
+          </button>
+          <div class="toolbar-popover hidden" id="volume-popover">
+            <div class="toolbar-popover-title">Volume Control</div>
+            <div class="vol-slider-row">
+              <input type="range" id="stage-volume-slider" min="0" max="100" value="100" class="toolbar-range-slider" aria-label="Media volume">
+              <span id="vol-slider-text" class="vol-pct-badge">100%</span>
+            </div>
+            <div class="vol-quick-buttons">
+              <button type="button" class="vol-quick-btn" data-vol="0">Mute</button>
+              <button type="button" class="vol-quick-btn" data-vol="50">50%</button>
+              <button type="button" class="vol-quick-btn" data-vol="100">100%</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Text Color Editor -->
+        <div class="toolbar-dropdown-wrap" id="text-color-picker-wrap">
+          <button type="button" class="floating-tool-btn" id="btn-text-color-toggle" title="Change subtitle text color">
+            <span class="color-dot" id="text-color-dot" style="background: #FFFFFF; border:1px solid #CBD5E1;"></span>
+            <span>Color</span>
+          </button>
+          <div class="toolbar-popover hidden" id="text-color-dropdown">
+            <div class="toolbar-popover-title">Subtitle Text Color</div>
+            <div class="color-palette-grid" id="text-palette-grid">
+              <button type="button" class="color-swatch active" data-color="#FFFFFF" style="background:#FFFFFF; border:1px solid #CBD5E1;" title="White"></button>
+              <button type="button" class="color-swatch" data-color="#B9E4E8" style="background:#B9E4E8; border:1px solid #CBD5E1;" title="Ice Blue"></button>
+              <button type="button" class="color-swatch" data-color="#167D8D" style="background:#167D8D;" title="Teal"></button>
+              <button type="button" class="color-swatch" data-color="#071B2B" style="background:#071B2B;" title="Dark Navy"></button>
+              <button type="button" class="color-swatch" data-color="#EEEEEE" style="background:#EEEEEE; border:1px solid #CBD5E1;" title="Pale Grey"></button>
+              <button type="button" class="color-swatch" data-color="#FACC15" style="background:#FACC15;" title="Yellow"></button>
+              <button type="button" class="color-swatch" data-color="#38BDF8" style="background:#38BDF8;" title="Sky Blue"></button>
+              <button type="button" class="color-swatch" data-color="#000000" style="background:#000000;" title="Black"></button>
+            </div>
+            <div class="color-hex-row">
+              <label for="text-native-color" class="color-picker-label">Custom</label>
+              <input type="color" id="text-native-color" value="#FFFFFF" class="native-color-input">
+              <div class="hex-input-box">
+                <span class="hex-hash">#</span>
+                <input type="text" id="text-hex-input" class="hex-code-input" value="FFFFFF" maxlength="6" spellcheck="false">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Error / Toast Overlay -->
+      <div class="stage-error-toast hidden" id="stage-error-toast">
+        <span id="toast-message">Error message</span>
+        <button type="button" class="btn-dismiss-toast" id="btn-dismiss-toast">&times;</button>
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- ── BOTTOM TIMELINE (VEED Style Multi-Track Scrubbing Bar) ──── -->
+  <footer class="studio-timeline" id="studio-timeline">
+
+    <!-- Timeline Controls Bar (Header) -->
+    <div class="timeline-controls-bar">
+      <!-- Left actions -->
+      <div class="timeline-controls-left">
+        <button type="button" class="btn-tl-control" id="btn-collapse-tl" title="Toggle timeline">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <button type="button" class="btn-tl-action" id="btn-split-at-playhead" title="Split subtitle line at current playhead">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+          <span>Split</span>
+        </button>
+        <button type="button" class="btn-tl-action" id="btn-add-subtitle-tl" title="Insert new subtitle block">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span>Add Subtitle</span>
+        </button>
+      </div>
+
+      <!-- Center Playback & Time Display -->
+      <div class="timeline-controls-center">
+        <button type="button" class="btn-tl-nav" id="btn-skip-backward" title="Skip backward 2s">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
+        </button>
+        <button type="button" class="btn-play-pause" id="btn-play-pause" title="Play / Pause (Spacebar)">
+          <svg class="icon-play" id="icon-play" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <svg class="icon-pause hidden" id="icon-pause" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+        </button>
+        <button type="button" class="btn-tl-nav" id="btn-skip-forward" title="Skip forward 2s">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+        </button>
+        <!-- Formatted Time Display: 00:00.0 / 00:09.8 -->
+        <span class="timeline-time-display" id="time-display">00:00.0 / 00:00.0</span>
+      </div>
+
+      <!-- Right Zoom & Fit Controls -->
+      <div class="timeline-controls-right">
+        <button type="button" class="btn-zoom-icon" id="btn-zoom-out" title="Zoom out">-</button>
+        <input type="range" id="timeline-zoom-slider" class="zoom-range" min="0.1" max="10" step="0.05" value="1" title="Timeline zoom level">
+        <button type="button" class="btn-zoom-icon" id="btn-zoom-in" title="Zoom in">+</button>
+        <button type="button" class="btn-tl-action" id="btn-fit-timeline" title="Fit media to timeline">Fit</button>
+      </div>
+    </div>
+
+    <!-- Scrollable Tracks Viewport -->
+    <div class="timeline-tracks-viewport" id="timeline-viewport">
+      <div class="timeline-tracks-inner" id="timeline-tracks-inner">
+
+        <!-- Time Ruler Bar with seconds markers (0s, 1s, 2s, 3s...) -->
+        <div class="timeline-ruler" id="timeline-ruler">
+          <div class="ruler-ticks" id="ruler-ticks"></div>
+        </div>
+
+        <!-- Vertical Playhead Needle with triangle handle (▼) -->
+        <div class="timeline-playhead" id="timeline-playhead" style="left: 0px;">
+          <div class="playhead-handle" id="playhead-handle"></div>
+          <div class="playhead-line"></div>
+        </div>
+
+        <!-- Track 1: Subtitle Pill Blocks Track (Multi-track expandable) -->
+        <div class="timeline-track-subtitles" id="timeline-subtitles-track">
+          <!-- Rendered dynamically as purple pill blocks -->
+        </div>
+
+        <!-- Track 2: Audio Waveform & Video Filmstrip Track -->
+        <div class="timeline-track-media" id="timeline-media-track">
+          <div class="filmstrip-bar" id="filmstrip-bar"></div>
+          <canvas class="waveform-canvas" id="waveform-canvas"></canvas>
+        </div>
+
+      </div>
+    </div>
+
+  </footer>
+
+  <!-- ── POPUP MODAL: Upload Video or Audio Source (VEED Style) ── -->
+  <div class="upload-modal-backdrop" id="upload-modal-backdrop">
+    <div class="upload-modal-card" id="upload-modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      
+      <!-- Close Button -->
+      <button type="button" class="btn-modal-close" id="btn-modal-close" aria-label="Close modal">&times;</button>
+      
+      <!-- Headline -->
+      <h2 class="upload-modal-title" id="modal-title">Let’s make a video</h2>
+      
+      <!-- Dashed Drop Area -->
+      <div class="modal-drop-area" id="modal-drop-area" tabindex="0" role="button" aria-label="Drop media here">
+        <div class="modal-cloud-icon">
+          <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
+            <path d="M12 12v9"/>
+            <path d="m16 16-4-4-4 4"/>
+          </svg>
+        </div>
+        <p class="modal-drop-text">Drop media here or</p>
+        <button type="button" class="btn-modal-upload" id="btn-modal-upload-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
+            <path d="M12 12v9"/>
+            <path d="m16 16-4-4-4 4"/>
+          </svg>
+          <span>Upload from computer</span>
+        </button>
+      </div>
+
+      <!-- 3 Bottom Feature Cards -->
+      <div class="modal-options-grid">
+        <button type="button" class="modal-option-card" id="btn-modal-ai-talking" title="AI Talking video">
+          <div class="modal-opt-icon opt-avatar">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a5 5 0 0 1 5 5v3a5 5 0 0 1-10 0V7a5 5 0 0 1 5-5z"/><path d="M19 11v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="20" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </div>
+          <span class="modal-opt-title">AI Talking video</span>
+        </button>
+
+        <button type="button" class="modal-option-card" id="btn-modal-record" title="Record yourself">
+          <div class="modal-opt-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+          </div>
+          <span class="modal-opt-title">Record yourself</span>
+        </button>
+
+        <button type="button" class="modal-option-card" id="btn-modal-phone" title="Upload from phone">
+          <div class="modal-opt-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+          </div>
+          <span class="modal-opt-title">Upload from phone</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Native Camera Capture Input (Immediate mobile camera or PC camera file) -->
+  <input type="file" id="camera-capture-input" accept="video/*,image/*" capture="user" hidden>
+
+  <!-- ── POPUP MODAL: Record Yourself (Desktop Webcam Live Stream Recorder) ── -->
+  <div class="webcam-modal-backdrop hidden" id="webcam-modal-backdrop">
+    <div class="webcam-modal-card" role="dialog" aria-modal="true" aria-labelledby="webcam-title">
+      <button type="button" class="btn-modal-close" id="btn-webcam-close" aria-label="Close">&times;</button>
+      <h3 class="webcam-modal-title" id="webcam-title">Record Yourself</h3>
+      
+      <div class="webcam-preview-frame">
+        <video id="webcam-preview-video" autoplay playsinline muted></video>
+        <div class="webcam-recording-badge hidden" id="webcam-rec-badge">
+          <span class="rec-dot"></span>
+          <span id="webcam-rec-timer">00:00</span>
+        </div>
+      </div>
+
+      <div class="webcam-actions">
+        <button type="button" class="btn-webcam-action btn-webcam-record" id="btn-webcam-start">
+          <span class="btn-rec-circle"></span>
+          <span>Start Recording</span>
+        </button>
+        <button type="button" class="btn-webcam-action btn-webcam-stop hidden" id="btn-webcam-stop">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+          <span>Stop &amp; Use Video</span>
+        </button>
+        <button type="button" class="btn-webcam-secondary" id="btn-webcam-device-switch">
+          <span>Camera File Picker</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
