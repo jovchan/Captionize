@@ -1,12 +1,3 @@
----
-title: Captionize Studio
-emoji: 🎬
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-app_port: 3000
----
-
 # Captionize
 
 A high-performance audio and video transcription, translation, and subtitle studio (Uniscribe clone). Convert MP4, MP3, WAV, and M4A files to accurate, synchronized text, and export ready-to-use `.srt`, `.vtt`, and `.txt` subtitles.
