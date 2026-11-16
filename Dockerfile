@@ -27,3 +27,4 @@ EXPOSE 3000
 
 # Start Captionize Studio
 CMD ["node", "server.js"]
+

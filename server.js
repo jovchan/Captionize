@@ -395,15 +395,89 @@ app.post('/api/transcribe', upload.single('file'), async (req, res) => {
   const cleanupList = [];
 
   try {
+    const mode = req.body.mode || 'transcribe';
+    const targetLanguage = req.body.language || 'auto';
+
+    // ── Direct Base64 Audio Path (Vercel-compatible & Web Audio API) ──
+    if (req.body && req.body.audioBase64) {
+      console.log(`[Transcribe] Menerima base64 audio langsung (${Math.round(req.body.audioBase64.length / 1024)}KB)`);
+      const audioBase64 = req.body.audioBase64;
+      const mimeType = req.body.mimeType || 'audio/wav';
+      const prompt = buildGeminiPrompt({ mode, targetLanguage });
+
+      const geminiResult = await queryGeminiWithFallback(audioBase64, mimeType, prompt);
+      const parsedData = geminiResult.data;
+
+      let rawSegments = [];
+      let detectedLanguage = targetLanguage || 'id';
+      let detectedSpeakers = ['Speaker 1'];
+
+      if (Array.isArray(parsedData)) {
+        rawSegments = parsedData;
+      } else if (parsedData && Array.isArray(parsedData.segments)) {
+        rawSegments = parsedData.segments;
+        if (parsedData.language) detectedLanguage = parsedData.language;
+        if (Array.isArray(parsedData.speakers)) detectedSpeakers = parsedData.speakers;
+      }
+
+      const enforcedSegments = [];
+      for (const rawSeg of rawSegments) {
+        enforcedSegments.push(...splitSegmentByWordsAndPunctuation({
+          ...rawSeg,
+          speaker: rawSeg.speaker || 'Speaker 1',
+          lang: rawSeg.lang || detectedLanguage,
+        }));
+      }
+
+      enforcedSegments.sort((a, b) => a.start - b.start);
+
+      for (let i = 0; i < enforcedSegments.length; i++) {
+        const current = enforcedSegments[i];
+        current.isOverlap = false;
+        for (let j = 0; j < enforcedSegments.length; j++) {
+          if (i === j) continue;
+          const other = enforcedSegments[j];
+          const overlaps = Math.max(current.start, other.start) < Math.min(current.end, other.end);
+          if (overlaps && current.speaker !== other.speaker) {
+            current.isOverlap = true;
+            break;
+          }
+        }
+      }
+
+      const finalSegments = enforcedSegments.map((seg, idx) => ({
+        id: idx + 1,
+        start: typeof seg.start === 'number' ? Math.round(seg.start * 100) / 100 : parseFloat(seg.start) || 0,
+        end: typeof seg.end === 'number' ? Math.round(seg.end * 100) / 100 : parseFloat(seg.end) || 0,
+        speaker: seg.speaker || 'Speaker 1',
+        lang: seg.lang || detectedLanguage || '',
+        isOverlap: Boolean(seg.isOverlap),
+        text: sanitizeCaptionText(seg.text),
+      }));
+
+      const finalSpeakers = Array.from(new Set(finalSegments.map((s) => s.speaker)));
+      const fullText = finalSegments.map((s) => s.text).join(' ');
+      const summary = fullText.length > 200 ? fullText.substring(0, 200) + '...' : fullText;
+
+      return res.json({
+        success: true,
+        engine: `Google Gemini (${geminiResult.model})`,
+        duration: req.body.duration || (finalSegments.length ? finalSegments[finalSegments.length - 1].end : 0),
+        language: detectedLanguage,
+        summary,
+        keyPoints: [],
+        speakers: finalSpeakers.length ? finalSpeakers : detectedSpeakers,
+        segments: finalSegments,
+      });
+    }
+
+    // ── Multipart File Path (Fallback) ──
     if (!req.file) {
       return res.status(400).json({ error: 'Tidak ada file audio atau video yang diunggah.' });
     }
 
     const uploadedPath = req.file.path;
     cleanupList.push(uploadedPath);
-
-    const mode = req.body.mode || 'transcribe';
-    const targetLanguage = req.body.language || 'auto';
 
     console.log(`[Upload] Menerima: ${req.file.originalname} (${(req.file.size / 1024 / 1024).toFixed(1)}MB)`);
     console.log(`[Config] Mode: ${mode}, Target Language: ${targetLanguage}`);

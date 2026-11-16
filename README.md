@@ -56,7 +56,31 @@ Visit **http://localhost:3000** in your web browser.
 
 ---
 
-## Deploy to Render (Free Tier)
+## Deploy to Vercel (100% Free • No Credit Card Required)
+
+Captionize is fully optimized for **Vercel Serverless**. Audio extraction happens directly in the browser via Web Audio API, so no cloud FFmpeg or Docker is needed.
+
+### 1. Push to GitHub
+```bash
+git add .
+git commit -m "feat: Vercel serverless architecture"
+git push -u origin main
+```
+
+### 2. Deploy on Vercel
+1. Go to [vercel.com](https://vercel.com) and log in with your GitHub account (Free forever, **no credit card needed**).
+2. Click **Add New…** → **Project**.
+3. Import your `captionize` repository.
+4. Under **Environment Variables**, add:
+   - **Key**: `GOOGLE_API_KEY`
+   - **Value**: Masukkan API Key Gemini Anda (`AQ.Ab8RN6Jw...`)
+5. Click **Deploy**.
+
+In under 30 seconds, your site will be live with a free global CDN and HTTPS domain (e.g. `https://captionize.vercel.app`).
+
+---
+
+## Deploy to Render (Alternative)
 
 This project is fully containerized and pre-configured for free deployment on [Render](https://render.com).
 

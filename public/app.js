@@ -1005,7 +1005,108 @@
     }
   }
 
-  // ── Subtitle Generation / AI Transcribe (OpenAI Whisper) ────
+  // ── In-Browser Audio Extraction & Base64 Encoder (Vercel Serverless Ready) ──
+
+  function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    const chunkSize = 8192;
+    for (let i = 0; i < len; i += chunkSize) {
+      const chunk = bytes.subarray(i, Math.min(i + chunkSize, len));
+      binary += String.fromCharCode.apply(null, chunk);
+    }
+    return btoa(binary);
+  }
+
+  function audioBufferToWavBlob(buffer) {
+    const numChannels = 1;
+    const sampleRate = buffer.sampleRate;
+    const format = 1; // PCM
+    const bitDepth = 16;
+    
+    const channelData = buffer.getChannelData(0);
+    const dataLength = channelData.length * 2;
+    const bufferLength = 44 + dataLength;
+    const outBuffer = new ArrayBuffer(bufferLength);
+    const view = new DataView(outBuffer);
+    
+    function writeString(offset, string) {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    }
+    
+    // RIFF chunk descriptor
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + dataLength, true);
+    writeString(8, 'WAVE');
+    // fmt sub-chunk
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, format, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * numChannels * (bitDepth / 8), true);
+    view.setUint16(32, numChannels * (bitDepth / 8), true);
+    view.setUint16(34, bitDepth, true);
+    // data sub-chunk
+    writeString(36, 'data');
+    view.setUint32(40, dataLength, true);
+    
+    // Write 16-bit PCM samples
+    let offset = 44;
+    for (let i = 0; i < channelData.length; i++) {
+      let s = Math.max(-1, Math.min(1, channelData[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      offset += 2;
+    }
+    
+    return new Blob([outBuffer], { type: 'audio/wav' });
+  }
+
+  async function extractAudioForTranscription(file) {
+    // 1. If already small audio file (< 3MB), read directly
+    if (file.type && file.type.startsWith('audio/') && file.size < 3 * 1024 * 1024) {
+      const arr = await file.arrayBuffer();
+      return {
+        audioBase64: arrayBufferToBase64(arr),
+        mimeType: file.type || 'audio/mp3',
+        duration: mediaDuration || 0,
+      };
+    }
+
+    // 2. Decode via Web Audio API directly in browser
+    const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+    const tempCtx = new AudioCtxClass();
+    const fileArrayBuffer = await file.arrayBuffer();
+    const decoded = await tempCtx.decodeAudioData(fileArrayBuffer);
+
+    // Select optimal sample rate for Vercel 4.5MB payload limit
+    const dur = decoded.duration || 10;
+    let targetRate = 16000;
+    if (dur > 180) targetRate = 8000;
+    else if (dur > 90) targetRate = 12000;
+
+    const numSamples = Math.round(dur * targetRate);
+    const offlineCtx = new OfflineAudioContext(1, numSamples, targetRate);
+    const src = offlineCtx.createBufferSource();
+    src.buffer = decoded;
+    src.connect(offlineCtx.destination);
+    src.start(0);
+
+    const rendered = await offlineCtx.startRendering();
+    const wavBlob = audioBufferToWavBlob(rendered);
+    const wavBuffer = await wavBlob.arrayBuffer();
+
+    return {
+      audioBase64: arrayBufferToBase64(wavBuffer),
+      mimeType: 'audio/wav',
+      duration: dur,
+    };
+  }
+
+  // ── Subtitle Generation / AI Transcribe (Gemini Engine) ────
 
   if (btnStartTranscribe) btnStartTranscribe.addEventListener('click', startTranscription);
   if (btnCleanAudio) btnCleanAudio.addEventListener('click', startTranscription);
@@ -1020,36 +1121,48 @@
     pushHistory('Generate Subtitles');
 
     btnStartTranscribe.disabled = true;
-    btnGenerateLabel.textContent = 'Generating Subtitle…';
+    btnGenerateLabel.textContent = 'Preparing audio…';
     drawerProgress.classList.remove('hidden');
     progressBarFill.classList.remove('indeterminate');
-    progressBarFill.style.width = '0%';
-    processingMessage.textContent = 'Generating Subtitle... 0%';
+    progressBarFill.style.width = '5%';
+    processingMessage.textContent = 'Extracting audio from media…';
 
-    let currentPct = 0;
-    const progressTimer = setInterval(() => {
-      if (currentPct < 90) {
-        const step = Math.max(1, (90 - currentPct) * 0.08 + Math.random() * 2);
-        currentPct = Math.min(92, currentPct + step);
-        const rounded = Math.round(currentPct);
-        progressBarFill.style.width = `${rounded}%`;
-        processingMessage.textContent = `Generating Subtitle... ${rounded}%`;
-      }
-    }, 250);
-
-    const formData = new FormData();
-    formData.append('file', activeFile);
-    formData.append('mode', transcriptionMode.value);
-    formData.append('language', targetLanguage.value);
+    let progressTimer = null;
 
     try {
+      // 1. Extract compact audio in browser (~0.5s)
+      const audioPayload = await extractAudioForTranscription(activeFile);
+      
+      btnGenerateLabel.textContent = 'Generating Subtitle…';
+      progressBarFill.style.width = '15%';
+      processingMessage.textContent = 'Generating Subtitle... 15%';
+
+      let currentPct = 15;
+      progressTimer = setInterval(() => {
+        if (currentPct < 90) {
+          const step = Math.max(1, (90 - currentPct) * 0.08 + Math.random() * 2);
+          currentPct = Math.min(92, currentPct + step);
+          const rounded = Math.round(currentPct);
+          progressBarFill.style.width = `${rounded}%`;
+          processingMessage.textContent = `Generating Subtitle... ${rounded}%`;
+        }
+      }, 250);
+
+      // 2. Send lightweight JSON to /api/transcribe (works on Vercel Serverless & local server)
       const response = await fetch('/api/transcribe', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          audioBase64: audioPayload.audioBase64,
+          mimeType: audioPayload.mimeType,
+          duration: audioPayload.duration || mediaDuration,
+          mode: transcriptionMode.value,
+          language: targetLanguage.value,
+        }),
       });
 
       const data = await response.json();
-      clearInterval(progressTimer);
+      if (progressTimer) clearInterval(progressTimer);
 
       if (!response.ok || !data.success) {
         throw new Error(data.error || 'Transcription failed.');
@@ -1080,11 +1193,11 @@
       }, 800);
 
     } catch (err) {
-      clearInterval(progressTimer);
+      if (progressTimer) clearInterval(progressTimer);
       drawerProgress.classList.add('hidden');
       showToast(err.message || 'Error occurred during transcription.');
     } finally {
-      clearInterval(progressTimer);
+      if (progressTimer) clearInterval(progressTimer);
       btnStartTranscribe.disabled = false;
       btnGenerateLabel.textContent = 'Generate Subtitle';
     }
